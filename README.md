@@ -37,7 +37,7 @@ Your task is to refactor, optimize, and fix these problems.
 - Tests that pass via `npm test` in both frontend and backend.
 - A brief `SOLUTION.md` describing **your approach and trade‑offs**.
 
-## Quick Start
+## Quick Start 
 
 node version: 18.XX
 ```bash
