@@ -23,6 +23,7 @@ function createApp() {
 const mockItems = [
   { id: 1, name: 'Apple', price: 1 },
   { id: 2, name: 'Banana', price: 2 },
+  { id: 3, name: 'Cherry', price: 3 },
 ];
 
 describe('Items routes', () => {
@@ -31,17 +32,21 @@ describe('Items routes', () => {
     fs.promises.writeFile.mockReset();
   });
 
-  test('GET /api/items returns all items (happy path)', async () => {
+  test('GET /api/items returns paginated items with metadata (happy path)', async () => {
     fs.promises.readFile.mockResolvedValue(JSON.stringify(mockItems));
     const app = createApp();
 
     const res = await request(app).get('/api/items').expect(200);
 
-    expect(res.body).toEqual(mockItems);
+    expect(res.body.items).toEqual(mockItems.slice(0, 20));
+    expect(res.body.total).toBe(3);
+    expect(res.body.page).toBe(1);
+    expect(res.body.totalPages).toBe(1);
+    expect(res.body.pageSize).toBe(20);
     expect(fs.promises.readFile).toHaveBeenCalledTimes(1);
   });
 
-  test('GET /api/items supports search query "q"', async () => {
+  test('GET /api/items supports search query "q" (server-side search)', async () => {
     fs.promises.readFile.mockResolvedValue(JSON.stringify(mockItems));
     const app = createApp();
 
@@ -50,19 +55,24 @@ describe('Items routes', () => {
       .query({ q: 'app' })
       .expect(200);
 
-    expect(res.body).toEqual([mockItems[0]]);
+    expect(res.body.items).toEqual([mockItems[0]]);
+    expect(res.body.total).toBe(1);
   });
 
-  test('GET /api/items supports limit query', async () => {
+  test('GET /api/items supports page and limit query for pagination', async () => {
     fs.promises.readFile.mockResolvedValue(JSON.stringify(mockItems));
     const app = createApp();
 
     const res = await request(app)
       .get('/api/items')
-      .query({ limit: 1 })
+      .query({ limit: 2, page: 2 })
       .expect(200);
 
-    expect(res.body).toHaveLength(1);
+    expect(res.body.items).toEqual([mockItems[2]]);
+    expect(res.body.total).toBe(3);
+    expect(res.body.page).toBe(2);
+    expect(res.body.totalPages).toBe(2);
+    expect(res.body.pageSize).toBe(2);
   });
 
   test('GET /api/items propagates read errors to error handler', async () => {
@@ -125,4 +135,3 @@ describe('Items routes', () => {
     expect(res.body).toEqual({ message: 'Failed to write' });
   });
 });
-

@@ -14,19 +14,37 @@ async function readData() {
 router.get('/', async (req, res, next) => {
   try {
     const data = await readData();
-    const { limit, q } = req.query;
+    const { limit, q, page } = req.query;
+
+    // Basic validation / defaults
+    const pageSize = Number.isNaN(parseInt(limit, 10)) ? 20 : parseInt(limit, 10);
+    const currentPage = Math.max(1, parseInt(page, 10) || 1);
+
     let results = data;
 
     if (q) {
-      // Simple substring search (sub‑optimal)
-      results = results.filter(item => item.name.toLowerCase().includes(q.toLowerCase()));
+      const lowered = q.toLowerCase();
+      results = results.filter(item => {
+        const name = (item.name || '').toLowerCase();
+        const category = (item.category || '').toLowerCase();
+        return name.includes(lowered) || category.includes(lowered);
+      });
     }
 
-    if (limit) {
-      results = results.slice(0, parseInt(limit));
-    }
+    const total = results.length;
+    const totalPages = total === 0 ? 1 : Math.ceil(total / pageSize);
+    const safePage = Math.min(currentPage, totalPages);
+    const start = (safePage - 1) * pageSize;
+    const end = start + pageSize;
+    const pageItems = results.slice(start, end);
 
-    res.json(results);
+    res.json({
+      items: pageItems,
+      total,
+      page: safePage,
+      totalPages,
+      pageSize,
+    });
   } catch (err) {
     next(err);
   }
